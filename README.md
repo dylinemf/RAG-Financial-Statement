@@ -29,8 +29,8 @@ RAG-Financial-Statement/
 │ ├── hooks/                        # Hooks
 │ │ └── useKnowledgeBase.ts         # Trigger based on batch process
 │ ├── styles/                       # CSS files
-│ │ └── globals.css                 # Global styles
-│ │ └── ChatInterface.module.css    # Module style
+│ │ ├── globals.css                 # Global styles
+│ │ ├── ChatInterface.module.css    # Module style
 │ │ └── FileUpload.module.css       # Module style
 │ ├── public/                       # folder for public usecases like icon
 │ │ └── favicon.png
