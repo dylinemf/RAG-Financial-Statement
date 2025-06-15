@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     # PDF upload path
     pdf_upload_path: str = os.getenv("PDF_UPLOAD_PATH", "../data")
 
-    ## Embeding dan LLM provider
+    ## Embedding and LLM provider
     embedding_provider: str = os.getenv("EMBEDDING_PROVIDER", "huggingface")
     llm_provider: str = os.getenv("LLM_PROVIDER", "huggingface")
     
@@ -50,6 +50,5 @@ class Settings(BaseSettings):
     
     class Config:
         env_file = ".env"
-
 
 settings = Settings() 

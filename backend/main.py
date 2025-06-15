@@ -13,7 +13,10 @@ from services.rag_pipeline import RAGPipeline
 import time
 
 # Configure logging
-logging.basicConfig(level=settings.log_level)
+logging.basicConfig(
+    level=settings.log_level, 
+    format="%(asctime)s|%(levelname)s|%(name)s|%(message)s",
+    handlers=[logging.StreamHandler()])
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
@@ -32,7 +35,6 @@ app.add_middleware(
 )
 
 # Initialize services
-# TODO: Initialize your services here
 pdf_processor = PDFProcessor()
 vector_store = VectorStoreService()
 rag_pipeline = RAGPipeline(vector_store)
@@ -57,20 +59,28 @@ async def root():
 @app.post("/api/upload")
 async def upload_pdf(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     """Upload and process PDF file"""
-    filename = f"{int(time.time())}_{file.filename}"
-    save_path = os.path.join(settings.pdf_upload_path, filename)
-    with open(save_path, "wb") as f:
-        f.write(await file.read())
-    # Process file in background
-    background_tasks.add_task(process_pdf_async, save_path)
-    return {"message": "PDF is received, processing in backend"}
+    try:
+        filename = f"{int(time.time())}_{file.filename}"
+        save_path = os.path.join(settings.pdf_upload_path, filename)
+        with open(save_path, "wb") as f:
+            f.write(await file.read())
+        # Process file in background
+        background_tasks.add_task(process_pdf_async, save_path)
+        return {"message": "PDF is received, processing in backend"}
+    except Exception as e:
+        logger.error(f"Upload endpoint error: {e}")
+        return {"answer": "Internal error", "sources": [], "processing_time": 0.0}
 
 
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     """Process chat request and return AI response"""
-    res = rag_pipeline.generate_answer(request.question)
-    return res
+    try:
+        res = rag_pipeline.generate_answer(request.question)
+        return res
+    except Exception as e:
+        logger.error(f"Chat endpoint error: {e}")
+        return {"answer": "Internal error", "sources": [], "processing_time": 0.0}
 
 
 @app.get("/api/documents")
