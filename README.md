@@ -57,7 +57,8 @@ RAG-Financial-Statement/
   - Added `react-markdown`, `remark-math`, and `katex` to render model responses with markdown and math formatting, making answers much cleaner and easier to read.
 
 - **Embeddings & LLM Provider Choice:**
-  - You can select either HuggingFace or OpenAI for both embeddings and LLM, simply by changing values in the `.env` file (see `.env.sample`). To use OpenAI, supply your own `OPENAI_API_KEY`.
+  - You can select either HuggingFace or OpenAI for both embeddings and LLM, simply by changing values in the `.env` file (see `.env`). To use OpenAI, supply your own `OPENAI_API_KEY`.
+  
   Sample `.env`:
   ```
   OPENAI_API_KEY= """                         # Fill with our own OpenAI API-Key
