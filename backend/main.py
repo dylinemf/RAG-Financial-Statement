@@ -1,14 +1,16 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException
+from config import settings
+from datetime import datetime
+from fastapi import BackgroundTasks
+from fastapi import FastAPI, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from models.schemas import ChatRequest, ChatResponse, DocumentsResponse, UploadResponse
+import glob
+import logging
+from models.schemas import ChatRequest
+import os
 from services.pdf_processor import PDFProcessor
 from services.vector_store import VectorStoreService
 from services.rag_pipeline import RAGPipeline
-from config import settings
-import logging
 import time
-import os
 
 # Configure logging
 logging.basicConfig(level=settings.log_level)
@@ -31,15 +33,18 @@ app.add_middleware(
 
 # Initialize services
 # TODO: Initialize your services here
-pdf_processor = None
-vector_store = None
-rag_pipeline = None
+pdf_processor = PDFProcessor()
+vector_store = VectorStoreService()
+rag_pipeline = RAGPipeline(vector_store)
+
+def process_pdf_async(path):
+    docs = pdf_processor.process_pdf(path)
+    vector_store.add_documents(docs)
 
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize services on startup"""
-    # TODO: Initialize your services
     logger.info("Starting RAG Q&A System...")
 
 
@@ -50,41 +55,62 @@ async def root():
 
 
 @app.post("/api/upload")
-async def upload_pdf(file: UploadFile = File(...)):
+async def upload_pdf(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     """Upload and process PDF file"""
-    # TODO: Implement PDF upload and processing
-    # 1. Validate file type (PDF)
-    # 2. Save uploaded file
-    # 3. Process PDF and extract text
-    # 4. Store documents in vector database
-    # 5. Return processing results
-    pass
+    filename = f"{int(time.time())}_{file.filename}"
+    save_path = os.path.join(settings.pdf_upload_path, filename)
+    with open(save_path, "wb") as f:
+        f.write(await file.read())
+    # Process file in background
+    background_tasks.add_task(process_pdf_async, save_path)
+    return {"message": "PDF is received, processing in backend"}
 
 
 @app.post("/api/chat")
 async def chat(request: ChatRequest):
     """Process chat request and return AI response"""
-    # TODO: Implement chat functionality
-    # 1. Validate request
-    # 2. Use RAG pipeline to generate answer
-    # 3. Return response with sources
-    pass
+    res = rag_pipeline.generate_answer(request.question)
+    return res
 
 
 @app.get("/api/documents")
 async def get_documents():
     """Get list of processed documents"""
-    # TODO: Implement document listing
-    # - Return list of uploaded and processed documents
-    pass
+    files = glob.glob(os.path.join(settings.pdf_upload_path, "*.pdf"))
+    documents = []
+    for f in files:
+        filename = os.path.basename(f)
+        upload_time = datetime.fromtimestamp(os.path.getmtime(f))
+        # need to get the chunk count (like total chunk from vectorstore)
+        try:
+            chunk_count = vector_store.get_document_count()
+        except:
+            chunk_count = 0
+        documents.append({
+            "filename": filename,
+            "upload_date": upload_time,
+            "chunks_count": chunk_count,
+            "status": "processed"
+        })
+    return {"documents": documents}
 
 
 @app.get("/api/chunks")
 async def get_chunks():
     """Get document chunks (optional endpoint)"""
-    # TODO: Implement chunk listing
-    # - Return document chunks with metadata
-    pass
+    result = vector_store.vectorstore.get()
+    
+    # result["documents"] usually is a list page_content
+    # result["ids"] -> id chunk, result["metadatas"] -> meta info per chunk
+    chunks = []
+    for idx, content in enumerate(result["documents"]):
+        chunks.append({
+            "id": result["ids"][idx],
+            "content": content,
+            "page": result["metadatas"][idx].get("page", "-"),
+            "metadata": result["metadatas"][idx],
+        })
+    return {"chunks": chunks, "total_count": len(chunks)}
 
 
 if __name__ == "__main__":

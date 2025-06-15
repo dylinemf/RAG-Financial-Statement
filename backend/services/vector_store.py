@@ -1,38 +1,37 @@
-from typing import List, Tuple
-from langchain.schema import Document
-from langchain.vectorstores import VectorStore
 from config import settings
+from langchain.schema import Document
+from langchain.vectorstores import Chroma
 import logging
+from services.providers import get_embedding_provider
+from typing import List, Tuple
 
 logger = logging.getLogger(__name__)
 
-
 class VectorStoreService:
     def __init__(self):
-        # TODO: Initialize vector store (ChromaDB, FAISS, etc.)
-        pass
+        self.persist_dir = settings.vector_db_path
+        self.embeddings = get_embedding_provider()
+        self.vectorstore = Chroma(
+            embedding_function=self.embeddings,
+            persist_directory=self.persist_dir
+        )
     
     def add_documents(self, documents: List[Document]) -> None:
         """Add documents to the vector store"""
-        # TODO: Implement document addition to vector store
-        # - Generate embeddings for documents
-        # - Store documents with embeddings in vector database
-        pass
+        self.vectorstore.add_documents(documents)
+        self.vectorstore.persist()
     
     def similarity_search(self, query: str, k: int = None) -> List[Tuple[Document, float]]:
         """Search for similar documents"""
-        # TODO: Implement similarity search
-        # - Generate embedding for query
-        # - Search for similar documents in vector store
-        # - Return documents with similarity scores
-        pass
+        if k is None:
+            k = settings.retrieval_k
+        return self.vectorstore.similarity_search_with_relevance_scores(query, k=k)
     
     def delete_documents(self, document_ids: List[str]) -> None:
         """Delete documents from vector store"""
-        # TODO: Implement document deletion
-        pass
+        self.vectorstore.delete(document_ids)
+        self.vectorstore.persist()
     
     def get_document_count(self) -> int:
         """Get total number of documents in vector store"""
-        # TODO: Return document count
-        pass 
+        return len(self.vectorstore.get()["ids"])
