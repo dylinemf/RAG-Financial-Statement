@@ -146,3 +146,21 @@
   color: #b1885b;
   font-size: 15px;
 }
+
+.markdownCodeblock {
+  background: #222;
+  color: #eee;
+  border-radius: 7px;
+  padding: 8px 12px;
+  font-size: 15px;
+  margin: 8px 0;
+  overflow-x: auto;
+}
+.markdownInlineCode {
+  background: #f5f6fa;
+  border-radius: 5px;
+  color: #653;
+  padding: 2px 4px;
+  font-size: 93%;
+}
+.katex { font-size: 1.07em; } /* optional biar tex clean */

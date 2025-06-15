@@ -1,5 +1,8 @@
 import React, { useRef, useState } from 'react';
 import styles from '../styles/ChatInterface.module.css';
+import ReactMarkdown from 'react-markdown';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
 
 interface Message {
   id: string;
@@ -76,7 +79,23 @@ export default function ChatInterface({ disabled=false }: ChatInterfaceProps) {
         {messages.map((msg) => (
           <div key={msg.id} className={`${styles.msgRow} ${msg.type === 'user' ? styles.msgRowUser : styles.msgRowAssistant}`}>
             <div className={msg.type === 'user' ? styles.msgBubbleUser : styles.msgBubbleAssistant}>
-              <span>{msg.content}</span>
+              {msg.type === "assistant" ? (
+                <ReactMarkdown
+                  remarkPlugins={[remarkMath]}
+                  rehypePlugins={[rehypeKatex]}
+                  components={{
+                    a: ({node, ...props}) => 
+                      <a {...props} target="_blank" rel="noopener noreferrer">{props.children}</a>,
+                    pre: ({node, ...props}) => <pre className={styles.markdownCodeblock} {...props} />,
+                    code: ({node, ...props}) => <code className={styles.markdownInlineCode} {...props} />,
+                  }}
+                >
+                  {msg.content}
+                </ReactMarkdown>
+              ) : (
+                <span>{msg.content}</span>
+              )}
+              {/* <span>{msg.content}</span> */}
               {msg.type==='assistant' && msg.sources && msg.sources.length > 0 && (
                 <div style={{ marginTop: 10 }}>
                   <button
