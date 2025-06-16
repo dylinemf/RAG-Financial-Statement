@@ -29,8 +29,8 @@ RAG-Financial-Statement/
 │ ├── hooks/                        # Hooks
 │ │ └── useKnowledgeBase.ts         # Trigger based on batch process
 │ ├── styles/                       # CSS files
-│ │ ├── globals.css                 # Global styles
-│ │ ├── ChatInterface.module.css    # Module style
+│ │ └── globals.css                 # Global styles
+│ │ └── ChatInterface.module.css    # Module style
 │ │ └── FileUpload.module.css       # Module style
 │ ├── public/                       # folder for public usecases like icon
 │ │ └── favicon.png
@@ -73,7 +73,7 @@ RAG-Financial-Statement/
   SIMILARITY_THRESHOLD=0.7
   EMBEDDING_PROVIDER="openai"                 # openai or huggingface
   LLM_PROVIDER="openai"                       # openai or huggingface
-  EMBEDDING_MODEL="text-embedding-ada-002"    # text-embedding-ada-002 or model sentence-transformers
+  EMBEDDING_MODEL="text-embedding-ada-002"    # text-embedding-ada-002 or model sentence-transformers/all-MiniLM-L6-v2
   LLM_MODEL="gpt-4-turbo"                     # gpt-3.5-turbo or gpt-4-turbo or distilbert-base-cased-distilled-squad
   ```
 
