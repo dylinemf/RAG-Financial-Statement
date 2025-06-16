@@ -7,7 +7,7 @@ interface FileUploadProps {
   onProcessingDone?: () => void;
 }
 
-// Spinner animasi SVG
+// Spinner only for 'Processing...' state
 const Spinner = () => (
   <span className={styles.spinner}>
     <svg viewBox="0 0 38 38">
@@ -28,6 +28,10 @@ export default function FileUpload({
   const [uploadProgress, setUploadProgress] = useState<number>(0);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingDone, setProcessingDone] = useState(false);
+
+  // Snack: processing progress
+  const [processingCount, setProcessingCount] = useState<number>(0);            // chunk count available
+  const [processingTotal, setProcessingTotal] = useState<number|null>(null);    // total target chunk
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -44,6 +48,8 @@ export default function FileUpload({
     setUploadProgress(0);
     setError(null);
     setProcessingDone(false);
+    setProcessingCount(0);
+    setProcessingTotal(null);
   };
 
   const handleDragOver = (e: React.DragEvent) => e.preventDefault();
@@ -60,24 +66,35 @@ export default function FileUpload({
     setUploadProgress(0);
     setError(null);
     setProcessingDone(false);
+    setProcessingCount(0);
+    setProcessingTotal(null);
   };
 
-  // Pooling untuk status proses chunk
+  // Poll for PDF chunking progress
   const pollProcessingStatus = () => {
     const interval = setInterval(async () => {
       try {
         const res = await fetch('/api/chunks');
         const data = await res.json();
-        if (data.total_count && data.total_count > 0) {
+        setProcessingCount(data.total_count || 0);
+        // CAUTION: field name must match backend!
+        setProcessingTotal(typeof data.total_target_count === 'number' ? data.total_target_count : null);
+
+        if ((typeof data.total_target_count === 'number') &&
+            data.total_count >= data.total_target_count && data.total_target_count > 0) {
+          setIsProcessing(false);
+          setProcessingDone(true);
+          clearInterval(interval);
+          if (typeof onProcessingDone === 'function') onProcessingDone();
+        } else if (!data.total_target_count && data.total_count > 0) {
+          // fallback: consider done
           setIsProcessing(false);
           setProcessingDone(true);
           clearInterval(interval);
           if (typeof onProcessingDone === 'function') onProcessingDone();
         }
-      } catch {
-        // do nothing, poll lagi di interval berikut
-      }
-    }, 2000);
+      } catch {}
+    }, 1500);
   };
 
   const handleUpload = () => {
@@ -87,6 +104,8 @@ export default function FileUpload({
     setError(null);
     setIsProcessing(false);
     setProcessingDone(false);
+    setProcessingCount(0);
+    setProcessingTotal(null);
 
     const xhr = new XMLHttpRequest();
     xhr.open('POST', '/api/upload');
@@ -104,23 +123,22 @@ export default function FileUpload({
       try {
         const resp = JSON.parse(xhr.responseText);
         if (xhr.status >= 200 && xhr.status < 300) {
-          setError(null);
           onUploadComplete && onUploadComplete(resp);
-
+          setError(null);
           setIsProcessing(true);
           setProcessingDone(false);
+          setProcessingCount(0);
+          setProcessingTotal(null);
           pollProcessingStatus();
         } else {
           setError(resp.detail || 'Upload error');
           setIsProcessing(false);
           setProcessingDone(false);
-          onUploadError && onUploadError(resp.detail || 'Upload error');
         }
       } catch {
         setError('Invalid server response');
         setIsProcessing(false);
         setProcessingDone(false);
-        onUploadError && onUploadError('Invalid server response');
       }
     };
 
@@ -129,7 +147,6 @@ export default function FileUpload({
       setError('Upload failed');
       setIsProcessing(false);
       setProcessingDone(false);
-      onUploadError && onUploadError('Upload failed');
     };
 
     const form = new FormData();
@@ -138,9 +155,16 @@ export default function FileUpload({
   };
 
   // ==== RENDER ====
+  // Percentage processing calculated
+  let processingPercent = null;
+  if (processingTotal && processingTotal > 0) {
+    processingPercent = Math.floor((processingCount/processingTotal) * 100);
+    if (processingPercent > 100) processingPercent = 100;
+  }
+
   return (
     <div className={styles.container}>
-      {/* AREA DRAG DAN DROP */}
+      {/* DRAG AND DROP AREA */}
       <div
         className={`${styles.uploadArea}${file ? ` ${styles.uploadAreaHasFile}` : ''}`}
         onDragOver={handleDragOver}
@@ -164,33 +188,67 @@ export default function FileUpload({
         ref={inputRef}
       />
 
-      {/* TOMBOL UPLOAD */}
+      {/* UPLOAD BUTTON */}
       <button
         type="button"
         className={styles.uploadBtn}
         onClick={handleUpload}
-        disabled={!file || isUploading}
+        disabled={!file || isUploading || isProcessing}
       >
-        {isUploading ? <><Spinner /> Uploading...</> : 'Upload PDF'}
+        {isUploading ? <><Spinner /> Uploading...</>
+         : (isProcessing ? <><Spinner /> Processing PDF...</> : 'Upload PDF')}
       </button>
 
-      {/* NOTIFIKASI */}
+      {/* ERROR */}
       {error && <div className={styles.error}>{error}</div>}
+
+      {/* UPLOAD PROGRESS BAR */}
       {isUploading && (
         <div className={styles.progressbar}>
           <div className={styles.progress} style={{ width: `${uploadProgress}%` }}>
-            {uploadProgress}%
+            Upload: {uploadProgress}%
           </div>
         </div>
       )}
+
+      {/* PDF PROCESSING PROGRESS */}
       {isProcessing && (
-        <div className={styles.info}>
-          <Spinner /> PDF is being proccessed on <b>server</b>...
-        </div>
-      )}
+      <div>
+        {/* numeric progress if available */}
+        {processingTotal && (
+          <>
+            {/* TEXT CENTER ALIGNMENT */}
+            <div className={styles.processingText}>
+              <Spinner /> 
+              <span style={{fontWeight:500, color:'#0777bc'}}>
+                Processing PDF: <b>{processingCount}</b> / <b>{processingTotal}</b> 
+                <span style={{marginLeft:6,color:'#3cb'}}>({processingPercent}%)</span>
+              </span>
+            </div>
+            <div className={styles.progressbar}>
+              <div
+                className={styles.progress}
+                style={{
+                  width: `${processingPercent}%`,
+                  background: '#279fb6'
+                }}
+              />
+            </div>
+          </>
+        )}
+        {/* fallback: label if not available */}
+        {!processingTotal && (
+          <div className={styles.info}>
+            <Spinner /> PDF is being processed on <b>server</b>...
+          </div>
+        )}
+      </div>
+    )}
+
+      {/* DONE */}
       {processingDone && (
         <div className={styles.success}>
-          ✅ Document has been processed! Feel free to start asking the model/Q&amp;A.
+          ✅ Document has been processed! Feel free to start asking questions.
         </div>
       )}
     </div>

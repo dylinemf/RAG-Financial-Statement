@@ -41,7 +41,11 @@ rag_pipeline = RAGPipeline(vector_store)
 
 def process_pdf_async(path):
     docs = pdf_processor.process_pdf(path)
-    vector_store.add_documents(docs)
+    try:
+        vector_store.target_chunk_count = len(docs)
+    except Exception:
+        pass
+    vector_store.add_documents(docs, batch_size=32)
 
 
 @app.on_event("startup")
@@ -107,11 +111,7 @@ async def get_documents():
 
 @app.get("/api/chunks")
 async def get_chunks():
-    """Get document chunks (optional endpoint)"""
     result = vector_store.vectorstore.get()
-    
-    # result["documents"] usually is a list page_content
-    # result["ids"] -> id chunk, result["metadatas"] -> meta info per chunk
     chunks = []
     for idx, content in enumerate(result["documents"]):
         chunks.append({
@@ -120,7 +120,13 @@ async def get_chunks():
             "page": result["metadatas"][idx].get("page", "-"),
             "metadata": result["metadatas"][idx],
         })
-    return {"chunks": chunks, "total_count": len(chunks)}
+    # for numeric progress of pdf processing
+    total_target_chunks = getattr(vector_store, "target_chunk_count", None)
+    return {
+        "chunks": chunks,
+        "total_count": len(chunks),
+        "total_target_count": total_target_chunks
+    }
 
 
 if __name__ == "__main__":

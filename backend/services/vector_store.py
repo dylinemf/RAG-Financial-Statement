@@ -4,6 +4,7 @@ from langchain.vectorstores import Chroma
 import logging
 from services.providers import get_embedding_provider
 from typing import List, Tuple
+from tqdm import tqdm
 
 logger = logging.getLogger(__name__)
 
@@ -11,6 +12,7 @@ class VectorStoreService:
     def __init__(self):
         self.persist_dir = settings.vector_db_path
         self.embeddings = get_embedding_provider()
+        self.target_chunk_count = None
         try:
             self.vectorstore = Chroma(
                 embedding_function=self.embeddings,
@@ -21,12 +23,17 @@ class VectorStoreService:
             logger.error(f"Failed to init vector store: {e}")
             raise
 
-    def add_documents(self, documents: List[Document]) -> None:
-        """Add documents to the vector store"""
+    def add_documents(self, documents: List[Document], batch_size: int = 32) -> None:
+        """Add documents to the vector store (batched with progress bar)"""
         if not documents:
             logger.warning("No documents provided to add to vector store.")
             return
-        self.vectorstore.add_documents(documents)
+        total = len(documents)
+        logger.info(f"Adding {total} documents to vector store.")
+        # Progress bar for batching
+        for i in tqdm(range(0, total, batch_size), desc="[Embedding VectorStore]", ncols=70):
+            batch = documents[i: i + batch_size]
+            self.vectorstore.add_documents(batch)
         self.vectorstore.persist()
         logger.info(f"Vectorstore now contains {self.get_document_count()} chunks after add.")
 

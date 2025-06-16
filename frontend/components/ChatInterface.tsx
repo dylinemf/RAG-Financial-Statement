@@ -95,7 +95,6 @@ export default function ChatInterface({ disabled=false }: ChatInterfaceProps) {
               ) : (
                 <span>{msg.content}</span>
               )}
-              {/* <span>{msg.content}</span> */}
               {msg.type==='assistant' && msg.sources && msg.sources.length > 0 && (
                 <div style={{ marginTop: 10 }}>
                   <button

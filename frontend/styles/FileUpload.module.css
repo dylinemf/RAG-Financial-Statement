@@ -108,3 +108,36 @@
 @keyframes spinfu {
   to { transform: rotate(360deg); }
 }
+
+.progressbarAnimated {
+  position: relative;
+  overflow: hidden;
+  background: #e3f7fa;
+}
+
+.progressIndeterminate {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 50%;
+  background: linear-gradient(90deg,#38b6b8,#47caf2 75%);
+  animation: indeterminate-x 1.2s infinite linear;
+  border-radius: 8px;
+  height: 18px;
+}
+
+@keyframes indeterminate-x {
+  0%   { left: -50%; width: 50%; }
+  70%  { left: 75%; width: 40%; }
+  100% { left: 100%; width: 15%; }
+}
+
+.processingText {
+  text-align: center;
+  margin: 10px 0 7px;
+  font-size: 15.3px;
+  letter-spacing: 0.03em;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 5px;
+}
